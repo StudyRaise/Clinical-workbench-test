@@ -1,0 +1,43 @@
+# Node
+node_modules
+.pnpm-store
+.next
+out
+build
+dist
+
+# Expo
+.expo
+.expo-shared
+
+# Logs
+*.log
+logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Editor
+.vscode
+.idea
+.DS_Store
+
+# TypeScript
+*.tsbuildinfo
+
+# Python
+__pycache__
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info
+.venv
+.env
+.env.*
+
+# Docker
+**/tmp
+
+# Prisma
+packages/db/prisma/migrations

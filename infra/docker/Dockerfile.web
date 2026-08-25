@@ -1,0 +1,19 @@
+FROM node:20-slim AS base
+WORKDIR /app
+COPY package.json pnpm-lock.yaml* pnpm-workspace.yaml turbo.json tsconfig.base.json ./
+COPY packages ./packages
+COPY apps/web ./apps/web
+RUN corepack enable pnpm \
+  && pnpm install --frozen-lockfile --filter web...
+RUN pnpm --filter web build
+
+FROM node:20-slim AS runner
+WORKDIR /app
+ENV NODE_ENV=production
+COPY --from=base /app/apps/web/.next ./.next
+COPY --from=base /app/apps/web/public ./public
+COPY --from=base /app/apps/web/package.json ./package.json
+RUN corepack enable pnpm \
+  && pnpm install --prod --filter web --offline || pnpm install --prod --filter web
+EXPOSE 3000
+CMD ["pnpm", "start"]
