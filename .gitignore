@@ -35,6 +35,7 @@ __pycache__
 .venv
 .env
 .env.*
+!.env.example
 
 # Docker
 **/tmp

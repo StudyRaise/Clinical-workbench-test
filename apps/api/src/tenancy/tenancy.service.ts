@@ -13,6 +13,14 @@ export class TenancyService {
     };
   }
 
+  /**
+   * 从 JWT 用户上下文（req.user.facilityId）解析租户。
+   * facilityId 与实体中的 tenantId 为同一语义。
+   */
+  resolveFromRequest(facilityId?: string): TenantContext {
+    return this.resolveTenant(facilityId);
+  }
+
   validateOnboarding(payload: unknown) {
     return SaaSOnboardingSchema.parse(payload);
   }

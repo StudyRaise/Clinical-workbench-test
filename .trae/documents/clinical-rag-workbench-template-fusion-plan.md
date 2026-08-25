@@ -6,11 +6,29 @@
 
 ## Current State Analysis
 
-- 工作区仅有 `.trae/specs/` 规范文档和 PRD docx，无任何代码
-- 三份模板已确认：
+- 工作区已含 `.trae/specs/` 规范文档、PRD docx 和已 clone 的模板代码
+- **实施进度**: Step 1（clone 内核模板并清理）已完成，Step 2-8 待实施
+- 三份模板已确认（经 AskUserQuestion）：
   - **内核**: [eyeamkd/init](https://github.com/eyeamkd/init) — Next.js 14 + NestJS + FastAPI Monorepo
   - **前端**: [next-shadcn-admin-dashboard](https://github.com/arhamkhnz/next-shadcn-admin-dashboard) — Next.js + Tailwind + shadcn/ui
   - **RAG**: [int2t05/rag-engine](https://github.com/int2t05/rag-engine) — FastAPI + LangChain + MySQL + MinIO
+
+### 模板确认清单（再次确认）
+
+| # | 模板 | 用途 | 技术栈匹配度 |
+|---|------|------|-------------|
+| 1 | **eyeamkd/init** | Monorepo 内核骨架 | 已含 apps/web(Next.js 14) + apps/api(NestJS) + apps/inference(FastAPI) + packages/*，与 spec 三层架构完全对应 |
+| 2 | **next-shadcn-admin-dashboard** | 前端 Dashboard UI 参考 | shadcn/ui + Tailwind，与 Next.js 14 兼容分支 archive/next14-tailwindv3 |
+| 3 | **int2t05/rag-engine** | RAG 管线实现参考 | FastAPI + LangChain + MySQL + MinIO + 混合检索 + SSE，与 spec 的 RAG 需求对应 |
+
+> 请确认以上三套模板选择，批准后我将继续 Step 2-8 的适配改造。
+
+### 已完成工作（Step 1 快照）
+
+- 已 clone eyeamkd/init 到工作区根目录，git init 并提交（110 文件，2804 行）
+- 已删除 `apps/mobile/`（Expo 移动端）和 `infra/terraform/`（IaC）
+- 已更新 `pnpm-workspace.yaml` 移除 mobile、加入 inference
+- 保留：apps/web、apps/api、apps/inference、apps/batch、packages/*、infra/compose、infra/docker
 
 ## 模板对比与适配要点
 

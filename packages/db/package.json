@@ -4,15 +4,16 @@
   "private": true,
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "files": ["dist", "prisma"],
+  "files": ["dist"],
   "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "prisma": "prisma"
+    "build": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@prisma/client": "^5.9.1"
+    "mysql2": "^3.11.0",
+    "reflect-metadata": "^0.2.2",
+    "typeorm": "^0.3.20"
   },
   "devDependencies": {
-    "prisma": "^5.9.1"
+    "@types/node": "^20.12.7"
   }
 }

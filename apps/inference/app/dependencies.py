@@ -6,7 +6,7 @@ from .services.clients import EmbeddingRouter, LLMRouter
 
 
 @asynccontextmanager
-def get_llm_router():
+async def get_llm_router():
     router = LLMRouter()
     try:
         yield router
@@ -15,7 +15,7 @@ def get_llm_router():
 
 
 @asynccontextmanager
-def get_embedding_router():
+async def get_embedding_router():
     router = EmbeddingRouter()
     try:
         yield router

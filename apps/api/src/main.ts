@@ -7,7 +7,8 @@ import { ConfigService } from '@nestjs/config';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { bufferLogs: true });
   app.setGlobalPrefix('api');
-  app.enableCors();
+  // 开启 CORS，允许前端 localhost:3000 访问
+  app.enableCors({ origin: 'http://localhost:3000' });
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,

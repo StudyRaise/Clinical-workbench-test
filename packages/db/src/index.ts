@@ -1,19 +1,10 @@
-import { PrismaClient } from '@prisma/client';
-
-let prisma: PrismaClient | null = null;
-
-export function getPrismaClient() {
-  if (!prisma) {
-    prisma = new PrismaClient({
-      log: ['query', 'error', 'warn']
-    });
-  }
-  return prisma;
-}
-
-export async function disconnect() {
-  if (prisma) {
-    await prisma.$disconnect();
-    prisma = null;
-  }
-}
+export { dataSource } from './data-source';
+export * from './entities/tenant.entity';
+export * from './entities/user.entity';
+export * from './entities/document.entity';
+export * from './entities/document_chunk.entity';
+export * from './entities/audit_log.entity';
+export * from './entities/preop_report.entity';
+export * from './entities/discharge_summary.entity';
+export * from './entities/research_record.entity';
+export * from './entities/research_variable.entity';
