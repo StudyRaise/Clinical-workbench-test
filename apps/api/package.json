@@ -9,6 +9,13 @@
     "lint": "eslint \"src/**/*.ts\" --max-warnings=0",
     "test": "jest"
   },
+  "jest": {
+    "moduleFileExtensions": ["js", "json", "ts"],
+    "rootDir": "src",
+    "testRegex": ".*\\.spec\\.ts$",
+    "transform": { "^.+\\.(t|j)s$": "ts-jest" },
+    "testEnvironment": "node"
+  },
   "dependencies": {
     "@nestjs/axios": "3.0.0",
     "@nestjs/common": "^10.3.2",

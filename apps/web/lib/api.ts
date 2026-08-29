@@ -238,35 +238,27 @@ export async function askKnowledge(
   });
 }
 
-/** SSE 流式知识库问答：onDelta 每次收到增量（answer=最终回答、reasoning=思考过程）回调；结束回调 onDone。 */
-export async function askKnowledgeStream(
-  content: string,
-  conversationId: string,
-  onDelta: (answer: string, reasoning: string) => void,
-  onDone: (final: { answer: string; conversationId: string; sources: KnowledgeChatSource[] }) => void
-): Promise<void> {
-  const res = await fetch(`${API_BASE}/knowledge/chat/stream`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {})
-    },
-    body: JSON.stringify({ content, conversation_id: conversationId })
-  });
-  if (!res.ok || !res.body) {
-    const text = await res.text().catch(() => '');
-    throw new Error(`流式问答失败 (${res.status})${text ? `: ${text.slice(0, 120)}` : ''}`);
-  }
+export interface KnowledgeStreamResult {
+  answer: string;
+  conversationId: string;
+  sources: KnowledgeChatSource[];
+}
 
-  const reader = res.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = '';
+/**
+ * SSE 流式问答事件解析器（纯逻辑，可单测）：
+ * push() 解析单个 SSE 事件文本并累积 answer/reasoning/sources；
+ * result() 返回最终结果。
+ */
+export function createKnowledgeStreamParser(
+  conversationId: string,
+  onDelta: (answer: string, reasoning: string) => void
+) {
   let answer = '';
   let reasoning = '';
   let convId = conversationId;
   let sources: KnowledgeChatSource[] = [];
 
-  const parseEvent = (event: string) => {
+  const push = (event: string) => {
     const dataLines: string[] = [];
     for (const line of event.split('\n')) {
       if (line.startsWith('data:')) dataLines.push(line.slice(5).trimStart());
@@ -302,18 +294,47 @@ export async function askKnowledgeStream(
     onDelta(answer, reasoning);
   };
 
+  const result = (): KnowledgeStreamResult => ({ answer, conversationId: convId, sources });
+  return { push, result };
+}
+
+/** SSE 流式知识库问答：onDelta 每次收到增量（answer=最终回答、reasoning=思考过程）回调；结束回调 onDone。 */
+export async function askKnowledgeStream(
+  content: string,
+  conversationId: string,
+  onDelta: (answer: string, reasoning: string) => void,
+  onDone: (final: KnowledgeStreamResult) => void
+): Promise<void> {
+  const res = await fetch(`${API_BASE}/knowledge/chat/stream`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {})
+    },
+    body: JSON.stringify({ content, conversation_id: conversationId })
+  });
+  if (!res.ok || !res.body) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`流式问答失败 (${res.status})${text ? `: ${text.slice(0, 120)}` : ''}`);
+  }
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  const parser = createKnowledgeStreamParser(conversationId, onDelta);
+
   for (;;) {
     const { done, value } = await reader.read();
     if (done) break;
     buffer += decoder.decode(value, { stream: true });
     let sep: number;
     while ((sep = buffer.indexOf('\n\n')) !== -1) {
-      parseEvent(buffer.slice(0, sep));
+      parser.push(buffer.slice(0, sep));
       buffer = buffer.slice(sep + 2);
     }
   }
-  if (buffer.trim()) parseEvent(buffer.trim());
-  onDone({ answer, conversationId: convId, sources });
+  if (buffer.trim()) parser.push(buffer.trim());
+  onDone(parser.result());
 }
 
 // ---------- 线上知识库（数据集） ----------

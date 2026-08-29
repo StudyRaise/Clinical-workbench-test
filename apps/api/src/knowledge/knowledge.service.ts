@@ -7,6 +7,11 @@ export function getInferenceBaseUrl(config: ConfigService): string {
   return config.get<string>('INFERENCE_URL', 'http://localhost:8000').replace(/\/$/, '');
 }
 
+/** multer 按 latin1 解码文件名，中文需转回 UTF-8 */
+export function decodeUploadFilename(name: string): string {
+  return Buffer.from(name, 'latin1').toString('utf8');
+}
+
 export interface IngestPayload {
   object_name: string;
   bucket?: string;
@@ -38,7 +43,7 @@ export class KnowledgeService {
 
   /** multer 按 latin1 解码文件名，中文需转回 UTF-8 */
   private decodeFilename(name: string): string {
-    return Buffer.from(name, 'latin1').toString('utf8');
+    return decodeUploadFilename(name);
   }
 
   /** 转发文档上传（multipart） */

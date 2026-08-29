@@ -1,29 +1,29 @@
-# AI SaaS Monorepo Boilerplate
+# AI SaaS Monorepo 脚手架
 
-This repository provides a batteries-included starting point for building a multi-tenant, AI-enabled SaaS using a monorepo layout. It contains production-minded service boundaries, shared packages for prompts and retrieval-augmented generation (RAG), infrastructure manifests, and guardrails that make it easy to plug in foundation models while staying compliant, observable, and cost-aware.
+本仓库是一个开箱即用的 Monorepo 起点，用于构建多租户、AI 驱动的 SaaS 应用。它提供了面向生产的服务边界、用于提示词与检索增强生成（RAG）的共享包、基础设施清单，以及便于接入基础大模型的护栏机制，同时保证合规、可观测与成本可控。
 
-## Getting started
+## 快速开始
 
-1. **Install prerequisites**
-   - [pnpm](https://pnpm.io/) \(>=8.15\)
-   - Node.js 18 LTS or newer
+1. **安装前置依赖**
+   - [pnpm](https://pnpm.io/)（>= 8.15）
+   - Node.js 18 LTS 或更高版本
    - Python 3.11+
-   - Docker (for local services)
-2. **Install JavaScript/TypeScript dependencies**
+   - Docker（用于本地服务）
+2. **安装 JavaScript/TypeScript 依赖**
    ```bash
    pnpm install
    ```
-3. **Bootstrap Python environments**
+3. **初始化 Python 环境**
    ```bash
    cd apps/inference && uv venv && source .venv/bin/activate && uv pip install -r requirements.txt
-   # or use: uv sync
+   # 或者使用：uv sync
    cd ../../apps/batch && uv venv && source .venv/bin/activate && uv pip install -r requirements.txt
    ```
-4. **Start backing services**
+4. **启动基础服务**
    ```bash
    docker compose -f infra/compose/compose.dev.yml up --build
    ```
-5. **Run the apps**
+5. **运行各应用**
    ```bash
    pnpm dev:web
    pnpm dev:api
@@ -32,48 +32,51 @@ This repository provides a batteries-included starting point for building a mult
    python apps/batch/jobs/nightly_eval.py
    ```
 
-## Repository layout
+> Windows 环境也可以直接使用 `scripts/start.bat`（或 `start.ps1`）一键启动。
+
+## 仓库结构
 
 ```
 repo/
 ├── apps/
-│   ├── web/          # Next.js 14 (App Router) frontend
-│   ├── mobile/       # Expo/React Native mobile client
-│   ├── api/          # NestJS BFF, multi-tenant product logic
-│   ├── inference/    # FastAPI service for LLM, embeddings, rerankers
-│   └── batch/        # Scheduled jobs: indexing, evals, training hooks
+│   ├── web/          # Next.js 14（App Router）前端
+│   ├── mobile/       # Expo/React Native 移动端
+│   ├── api/          # NestJS BFF，多租户产品逻辑
+│   ├── inference/    # FastAPI 推理服务（LLM、向量、重排序）
+│   └── batch/        # 定时任务：索引构建、评测、训练钩子
 ├── packages/
-│   ├── prompts/      # Versioned prompt templates and builders
-│   ├── llm-clients/  # Provider abstractions with retries/fallbacks
-│   ├── rag/          # Chunking pipelines and retriever utilities
-│   ├── embeddings/   # Embedding client with dimensionality guards
-│   ├── evals/        # Continuous evaluation harness
-│   ├── datasets/     # Dataset loaders and synthetic data tools
-│   ├── featurestore/ # Feature builders for ML + hybrid RAG
-│   ├── guardrails/   # Safety, jailbreak, and compliance filters
-│   ├── costs/        # Token accounting, budget alerts
-│   ├── utils/        # Shared helpers
-│   ├── contracts/    # DTO schemas shared across services
-│   └── db/           # Prisma client and migrations
+│   ├── prompts/      # 带版本管理的提示词模板与构建器
+│   ├── llm-clients/  # 模型提供方抽象（重试/降级）
+│   ├── rag/          # 文档切分流水线与检索工具
+│   ├── embeddings/   # 向量客户端（带维度校验）
+│   ├── evals/        # 持续评测框架
+│   ├── datasets/     # 数据集加载器与合成数据工具
+│   ├── featurestore/ # 机器学习 + 混合 RAG 的特征构建
+│   ├── guardrails/   # 安全、越权与合规过滤
+│   ├── costs/        # Token 计费与预算告警
+│   ├── utils/        # 通用工具
+│   ├── contracts/    # 跨服务共享的 DTO 契约
+│   └── db/           # Prisma 客户端与数据库迁移
 └── infra/
-    ├── compose/      # Docker Compose stacks (dev + GPU)
-    ├── docker/       # Dockerfiles for CPU/GPU inference
-    └── terraform/    # IAC scaffolding for cloud deployment
+    ├── compose/      # Docker Compose 编排（开发 + GPU）
+    ├── docker/       # CPU/GPU 推理的 Dockerfile
+    └── terraform/    # 云部署的 IaC 脚手架
 ```
 
-## Development workflows
+## 开发工作流
 
-- **Quality gates**: `pnpm lint`, `pnpm test`, and `pnpm build` leverage Turborepo so only affected workspaces run.
-- **Continuous evaluation**: `pnpm --filter @repo/evals test` executes golden prompts, RAG recall checks, and safety guard tests. Wire this into CI after your unit tests.
-- **Database**: `packages/db/prisma/schema.prisma` defines shared models. Run `pnpm --filter @repo/db prisma migrate dev` to evolve the schema.
-- **Prompts**: create typed templates in `packages/prompts/src`. Consumers import builders rather than hardcoding strings.
-- **RAG**: `packages/rag` ships chunkers, retrievers, and pipeline definitions. Use the semantic cache helpers in `packages/costs` + Redis to skip repeated calls.
+- **质量门禁**：`pnpm lint`、`pnpm test`、`pnpm build` 基于 Turborepo，只运行受影响的 workspace。
+- **持续评测**：`pnpm --filter @repo/evals test` 执行黄金提示词、RAG 召回检查与安全护栏测试，可在 CI 中接在单元测试之后。
+- **数据库**：共享模型定义在 `packages/db/prisma/schema.prisma`，通过 `pnpm --filter @repo/db prisma migrate dev` 演进 schema。
+- **提示词**：在 `packages/prompts/src` 中创建带类型的模板，使用方应导入构建器而非硬编码字符串。
+- **RAG**：`packages/rag` 提供切分器、检索器与流水线定义；可配合 `packages/costs` + Redis 的语义缓存跳过重复调用。
+- **一键提交代码**：对 AI 助手说"上传代码"即可触发 `.trae/skills/git-push` 定义的流程（增量测试门禁 → 提交前确认备注 → 推送）。
 
-## Next steps
+## 后续计划
 
-- Connect real model keys in `apps/inference/app/dependencies.py` and configure routing rules in `packages/llm-clients`.
-- Flesh out CI pipelines (GitHub Actions examples coming soon) to run lint/build/test + `pnpm --filter @repo/evals test` for continuous evaluation.
-- Hook up telemetry sinks (OpenTelemetry/OTLP, Prometheus, ClickHouse) by extending `packages/utils` logging wrappers.
-- Integrate production-ready auth (Clerk/Auth0/Cognito) inside `apps/api`'s `AuthModule`, and wire rate limiting with `@nestjs/throttler`.
+- 在 `apps/inference/app/dependencies.py` 中接入真实模型密钥，并在 `packages/llm-clients` 中配置路由规则。
+- 完善 CI 流水线（GitHub Actions 示例即将提供）：运行 lint/build/test 以及 `pnpm --filter @repo/evals test` 持续评测。
+- 扩展 `packages/utils` 的日志封装，接入遥测（OpenTelemetry/OTLP、Prometheus、ClickHouse）。
+- 在 `apps/api` 的 `AuthModule` 中集成生产级认证（Clerk/Auth0/Cognito），并用 `@nestjs/throttler` 配置限流。
 
-This boilerplate favors clarity over completeness—replace the placeholder logic with your product-specific flows and models.
+本脚手架重清晰而非面面俱到——请用你自己的业务流程与模型替换其中的占位逻辑。
