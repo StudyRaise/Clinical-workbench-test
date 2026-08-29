@@ -1,14 +1,14 @@
 /**
- * 国产 LLM API 客户端（通义千问 / DeepSeek）
+ * 国产 LLM API 客户端（SenseNova 商汤日日新 / 通义千问 / DeepSeek）
  *
- * 两个服务商均提供 OpenAI 兼容的 /chat/completions 接口，本模块基于 fetch 实现统一客户端，
+ * 服务商均提供 OpenAI 兼容的 /chat/completions 接口，本模块基于 fetch 实现统一客户端，
  * 内置：指数退避重试（默认 3 次）、请求超时控制、Token 用量返回、Token 估算、SSE 流式响应。
  *
  * 兼容性说明：除新版 complete(messages) / stream(messages) 接口外，同时保留对旧版调用形式
  * complete({ model, prompt, metadata }) 的支持（apps/api、packages/evals 等既有调用方仍在依赖）。
  */
 
-export type LLMProvider = 'qwen' | 'deepseek';
+export type LLMProvider = 'qwen' | 'deepseek' | 'sensenova';
 
 export interface LLMChatMessage {
   role: string; // 'system' | 'user' | 'assistant'
@@ -26,7 +26,8 @@ export interface LLMClientOptions {
 
 /** 旧版兼容参数（apps/api、packages/evals 仍在调用） */
 export interface LegacyCompletionParams {
-  model: string;
+  /** 模型名；省略时使用全局默认模型（LLM_MODEL 或 provider 默认） */
+  model?: string;
   prompt: string;
   metadata?: Record<string, unknown>;
 }
@@ -59,6 +60,11 @@ export const LLM_PROVIDERS: Record<
     baseUrl: 'https://api.deepseek.com/v1/chat/completions',
     envKey: 'DEEPSEEK_API_KEY',
     defaultModel: 'deepseek-chat'
+  },
+  sensenova: {
+    baseUrl: 'https://token.sensenova.cn/v1/chat/completions',
+    envKey: 'SENSENOVA_API_KEY',
+    defaultModel: 'glm-5.2'
   }
 };
 
@@ -96,9 +102,10 @@ export function createLLMClient(
   const resolvedProvider: LLMProvider =
     provider ?? ((process.env.LLM_PROVIDER as LLMProvider | undefined) ?? 'qwen');
   const providerCfg = LLM_PROVIDERS[resolvedProvider];
-  const resolvedKey = apiKey ?? process.env[providerCfg.envKey] ?? '';
-  const baseUrl = options.baseUrl ?? providerCfg.baseUrl;
-  const defaultModel = options.model ?? providerCfg.defaultModel;
+  // 支持全局覆盖：LLM_API_KEY / LLM_BASE_URL / LLM_MODEL 优先于 provider 默认
+  const resolvedKey = apiKey ?? process.env.LLM_API_KEY ?? process.env[providerCfg.envKey] ?? '';
+  const baseUrl = options.baseUrl ?? process.env.LLM_BASE_URL ?? providerCfg.baseUrl;
+  const defaultModel = options.model ?? process.env.LLM_MODEL ?? providerCfg.defaultModel;
   const timeoutMs = options.timeoutMs ?? 30_000;
   const maxRetries = options.maxRetries ?? 3;
 

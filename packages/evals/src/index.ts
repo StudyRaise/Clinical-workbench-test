@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { createLLMClient } from '@repo/llm-clients';
-import { demoProductPitchPrompt } from '@repo/prompts';
+import { demoProductPitchPrompt, DemoPromptInput } from '@repo/prompts';
 
 export interface EvalRun {
   id: string;
@@ -16,7 +16,12 @@ export const GoldenPromptSchema = z.object({
   rubric: z.string()
 });
 
-export type GoldenPrompt = z.infer<typeof GoldenPromptSchema>;
+/** 显式类型（z.infer 对含泛型 ZodType 的 schema 会退化成 unknown，故不用 z.infer） */
+export interface GoldenPrompt {
+  id: string;
+  input: DemoPromptInput;
+  rubric: string;
+}
 
 export interface EvaluationSummary {
   dataset: string;
@@ -33,8 +38,8 @@ export async function runGoldenPrompts(dataset: string, prompts: GoldenPrompt[])
   for (const prompt of prompts) {
     const built = demoProductPitchPrompt.build(prompt.input);
     const hash = demoProductPitchPrompt.hash(built);
+    // 不传 model 覆盖，使用全局配置的默认模型（LLM_PROVIDER / LLM_MODEL，如 sensenova glm-5.2）
     const result = await client.complete({
-      model: 'gpt-4.1-mini',
       prompt: built,
       metadata: { dataset, promptId: prompt.id, promptHash: hash }
     });

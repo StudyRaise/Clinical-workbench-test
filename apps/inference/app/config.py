@@ -8,6 +8,13 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass, field
+from pathlib import Path
+
+from dotenv import load_dotenv
+
+# 兼容从任意工作目录启动：优先加载仓库根目录的 .env（不覆盖已存在的环境变量）
+# config.py 位于 <repo>/apps/inference/app/config.py，parents[3] 即仓库根目录
+load_dotenv(Path(__file__).resolve().parents[3] / ".env", override=False)
 
 
 def _get_bool(name: str, default: bool = False) -> bool:
@@ -70,8 +77,18 @@ class Settings:
 
     # ---------- LLM（国产模型） ----------
     llm_provider: str = field(default_factory=lambda: os.getenv("LLM_PROVIDER", "qwen").strip().lower())
+    # 全局覆盖：任意 provider 都可用 LLM_API_KEY / LLM_BASE_URL / LLM_MODEL 统一指定
+    llm_api_key: str = field(default_factory=lambda: os.getenv("LLM_API_KEY", ""))
+    llm_base_url: str = field(default_factory=lambda: os.getenv("LLM_BASE_URL", ""))
+    llm_model: str = field(default_factory=lambda: os.getenv("LLM_MODEL", ""))
     qwen_api_key: str = field(default_factory=lambda: os.getenv("QWEN_API_KEY", ""))
     deepseek_api_key: str = field(default_factory=lambda: os.getenv("DEEPSEEK_API_KEY", ""))
+    # SenseNova（商汤日日新，OpenAI 兼容）
+    sensenova_api_key: str = field(default_factory=lambda: os.getenv("SENSENOVA_API_KEY", ""))
+    sensenova_base_url: str = field(
+        default_factory=lambda: os.getenv("SENSENOVA_BASE_URL", "https://token.sensenova.cn/v1")
+    )
+    sensenova_model: str = field(default_factory=lambda: os.getenv("SENSENOVA_MODEL", "glm-5.2"))
     embedding_api_key: str = field(default_factory=lambda: os.getenv("EMBEDDING_API_KEY", ""))
     embedding_model: str = field(default_factory=lambda: os.getenv("EMBEDDING_MODEL", "text-embedding-v2"))
     embedding_dim: int = field(default_factory=lambda: _get_int("EMBEDDING_DIM", 1024))
@@ -85,6 +102,28 @@ class Settings:
     # ---------- 通用 LLM 超时 / 重试 ----------
     llm_timeout: float = field(default_factory=lambda: float(os.getenv("LLM_TIMEOUT", "60.0")))
     llm_max_retries: int = field(default_factory=lambda: _get_int("LLM_MAX_RETRIES", 3))
+
+    # ---------- SenseCore RAG ----------
+    sensecore_rag_url: str = field(
+        default_factory=lambda: os.getenv(
+            "SENSECORE_RAG_URL",
+            "https://rag.cn-sh-01.sensecoreapi.cn/studio/rag/chat/v1/release:chat",
+        )
+    )
+    sensecore_release_key: str = field(default_factory=lambda: os.getenv("SENSECORE_RELEASE_KEY", ""))
+    # SenseCore 控制台 AccessKey / SecretKey（AI_Studio RAG_openapi 使用 HMAC 鉴权，
+    # 见 https://www.sensecore.cn/help/docs/model-as-a-service/AI_Studio/API/RAG_openapi/authentication）
+    sensecore_access_key: str = field(default_factory=lambda: os.getenv("SENSECORE_ACCESS_KEY", ""))
+    sensecore_secret_key: str = field(default_factory=lambda: os.getenv("SENSECORE_SECRET_KEY", ""))
+    # 可选的显式 Bearer Token（从浏览器 DevTools 复制的完整 Authorization 头值，优先级最高）。
+    # 未配置时回退为：用 AccessKey/SecretKey 生成 HMAC 鉴权头。
+    sensecore_bearer_token: str = field(default_factory=lambda: os.getenv("SENSECORE_BEARER_TOKEN", ""))
+
+    # 业务模型（LLM）相关
+    model: str = field(default_factory=lambda: os.getenv("LLM_MODEL", "glm-5.2"))
+    preop_model: str = field(default_factory=lambda: os.getenv("PREOP_MODEL", ""))
+    discharge_model: str = field(default_factory=lambda: os.getenv("DISCHARGE_MODEL", ""))
+    research_model: str = field(default_factory=lambda: os.getenv("RESEARCH_MODEL", ""))
 
 
 # 模块级单例，便于各处直接 import 使用

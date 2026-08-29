@@ -42,3 +42,9 @@ __pycache__
 
 # Prisma
 packages/db/prisma/migrations
+
+# TS ±àÒë²úÎï
+packages/*/src/**/*.js
+packages/*/src/**/*.js.map
+packages/*/src/**/*.d.ts
+packages/*/src/**/*.d.ts.map

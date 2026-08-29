@@ -52,6 +52,8 @@ class PreopAnalyzeResponse(BaseModel):
     consent: str = ""
     missing_items: list[str] = []
     score: float = 0.0
+    degraded: bool = False
+    reason: str = ""
 
 
 def _fallback_score(missing_items: list[str]) -> float:
@@ -96,7 +98,12 @@ async def analyze_preop(payload: PreopAnalyzeRequest) -> PreopAnalyzeResponse:
         )
     except LLMError as exc:
         logger.warning("preop LLM 调用失败，返回降级结果: %s", exc)
-        return PreopAnalyzeResponse(score=0.0)
+        reason = (
+            "模型调用被限流或配额耗尽（429），请稍后在平台提升配额"
+            if "429" in str(exc)
+            else f"AI 服务暂不可用：{str(exc)[:120]}"
+        )
+        return PreopAnalyzeResponse(score=0.0, degraded=True, reason=reason)
     finally:
         await client.close()
 

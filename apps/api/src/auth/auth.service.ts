@@ -8,7 +8,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
 import { randomUUID } from 'crypto';
-import { User, UserRole } from '@repo/db';
+import { Tenant, User, UserRole } from '@repo/db';
 import { JwtPayload } from './auth.interfaces';
 
 /** 注册请求体 */
@@ -31,6 +31,7 @@ export interface LoginInput {
 export class AuthService {
   constructor(
     @InjectRepository(User) private readonly users: Repository<User>,
+    @InjectRepository(Tenant) private readonly tenants: Repository<Tenant>,
     private readonly jwtService: JwtService
   ) {}
 
@@ -46,6 +47,9 @@ export class AuthService {
     const role = input.role ?? UserRole.PATIENT;
     const passwordHash = await bcrypt.hash(input.password, 10);
 
+    // 若机构（租户）不存在则自动创建，避免外键约束导致注册失败
+    await this.ensureTenant(facilityId);
+
     const user = this.users.create({
       id: randomUUID(),
       tenantId: facilityId, // 实体列名为 tenant_id，与 facilityId 同一语义
@@ -57,6 +61,18 @@ export class AuthService {
 
     const accessToken = await this.signToken(user.id, facilityId, role);
     return { access_token: accessToken, user: this.toPublicUser(user) };
+  }
+
+  /** 确保租户存在：不存在则创建，返回 true 表示新建 */
+  private async ensureTenant(facilityId: string): Promise<boolean> {
+    const exists = await this.tenants.findOne({ where: { id: facilityId } });
+    if (exists) {
+      return false;
+    }
+    await this.tenants.save(
+      this.tenants.create({ id: facilityId, name: facilityId })
+    );
+    return true;
   }
 
   /** 登录：校验密码后签发 JWT */

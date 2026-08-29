@@ -1,13 +1,13 @@
-import { runGoldenPrompts, GoldenPromptSchema } from '..';
+import { runGoldenPrompts, GoldenPrompt } from '..';
 
 async function main() {
-  const dataset = [
+  const dataset: GoldenPrompt[] = [
     {
       id: 'demo-pitch',
       input: { product: 'AI SaaS', audience: 'growth leaders' },
       rubric: 'return on investment'
     }
-  ].map((item) => GoldenPromptSchema.parse(item));
+  ];
 
   const summary = await runGoldenPrompts('demo-dataset', dataset);
   console.log(JSON.stringify(summary, null, 2));

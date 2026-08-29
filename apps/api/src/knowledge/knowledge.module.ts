@@ -1,11 +1,15 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { KnowledgeService } from './knowledge.service';
-import { KnowledgeController } from './knowledge.controller';
+import {
+  KnowledgeChatController,
+  KnowledgeController,
+  KnowledgeDatasetsController
+} from './knowledge.controller';
 
 @Module({
   imports: [ConfigModule],
-  controllers: [KnowledgeController],
+  controllers: [KnowledgeController, KnowledgeChatController, KnowledgeDatasetsController],
   providers: [KnowledgeService],
   exports: [KnowledgeService]
 })

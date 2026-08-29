@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { version } from '../../../package.json';
+
+const VERSION = '0.1.0';
 
 @Injectable()
 export class AppService {
@@ -7,7 +8,7 @@ export class AppService {
     return {
       status: 'ok',
       service: 'api',
-      version,
+      version: VERSION,
       timestamp: new Date().toISOString()
     };
   }

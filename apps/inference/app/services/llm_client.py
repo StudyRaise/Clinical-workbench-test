@@ -27,7 +27,7 @@ from ..config import settings
 
 logger = logging.getLogger(__name__)
 
-# 各 provider 的默认模型与端点
+# 各 provider 的默认模型与端点（可用 LLM_BASE_URL / LLM_MODEL 全局覆盖）
 _PROVIDERS: dict[str, dict[str, str]] = {
     "qwen": {
         "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
@@ -36,6 +36,10 @@ _PROVIDERS: dict[str, dict[str, str]] = {
     "deepseek": {
         "base_url": "https://api.deepseek.com/v1",
         "model": "deepseek-chat",
+    },
+    "sensenova": {
+        "base_url": settings.sensenova_base_url,
+        "model": settings.sensenova_model,
     },
 }
 
@@ -76,17 +80,21 @@ class LLMClient:
             provider = "qwen"
 
         self.provider = provider
-        self.base_url = _PROVIDERS[provider]["base_url"]
-        self.model = model or _PROVIDERS[provider]["model"]
+        # 支持全局覆盖：LLM_BASE_URL / LLM_MODEL 优先于 provider 默认值
+        self.base_url = settings.llm_base_url or _PROVIDERS[provider]["base_url"]
+        self.model = model or settings.llm_model or _PROVIDERS[provider]["model"]
 
-        # 按 provider 取对应 API Key
+        # 按 provider 取对应 API Key；LLM_API_KEY 为全局兜底
         if api_key:
             self.api_key = api_key
         else:
             self.api_key = (
-                settings.qwen_api_key
-                if provider == "qwen"
-                else settings.deepseek_api_key
+                settings.llm_api_key
+                or {
+                    "qwen": settings.qwen_api_key,
+                    "deepseek": settings.deepseek_api_key,
+                    "sensenova": settings.sensenova_api_key,
+                }.get(provider, "")
             )
 
         self.timeout = timeout or settings.llm_timeout
@@ -126,7 +134,7 @@ class LLMClient:
             模型生成的文本；出错时抛出 LLMError。
         """
         if not self.api_key:
-            raise LLMError("未配置 API Key（设置 QWEN_API_KEY / DEEPSEEK_API_KEY）")
+            raise LLMError("未配置 API Key（设置 SENSENOVA_API_KEY / QWEN_API_KEY / DEEPSEEK_API_KEY / LLM_API_KEY）")
 
         payload: dict[str, Any] = {
             "model": model or self.model,
@@ -160,7 +168,7 @@ class LLMClient:
         用法：async for delta in client.stream(messages): ...
         """
         if not self.api_key:
-            raise LLMError("未配置 API Key（设置 QWEN_API_KEY / DEEPSEEK_API_KEY）")
+            raise LLMError("未配置 API Key（设置 SENSENOVA_API_KEY / QWEN_API_KEY / DEEPSEEK_API_KEY / LLM_API_KEY）")
 
         payload: dict[str, Any] = {
             "model": model or self.model,

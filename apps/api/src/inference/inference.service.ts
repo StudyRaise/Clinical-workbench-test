@@ -5,8 +5,6 @@ import { tokenBudgetPolicy } from '@repo/costs';
 import { TenancyService } from '../tenancy/tenancy.service';
 import { CompletionRequest, CompletionResponse } from './interfaces';
 
-const llmClient = createLLMClient();
-
 @Injectable()
 export class InferenceService {
   private readonly logger = new Logger(InferenceService.name);
@@ -15,6 +13,9 @@ export class InferenceService {
   constructor(private readonly tenancyService: TenancyService) {}
 
   async runCompletion(request: CompletionRequest): Promise<CompletionResponse> {
+    // 懒加载：确保调用时 NestJS 已完成 .env -> process.env 注入，
+    // 否则模块加载期读取不到 LLM_PROVIDER / SENSENOVA_API_KEY
+    const llmClient = createLLMClient();
     const tenant = this.tenancyService.resolveTenant(request.tenantId);
     const budget = tokenBudgetPolicy.create({
       tenantId: tenant.tenantId,

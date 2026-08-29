@@ -1,0 +1,2 @@
+# Next.js 静态资源目录（public）
+# 该文件用于保证目录存在，线上镜像构建时 Dockerfile.web 需要 COPY apps/web/public。

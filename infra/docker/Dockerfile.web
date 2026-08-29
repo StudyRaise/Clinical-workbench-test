@@ -5,6 +5,11 @@ COPY packages ./packages
 COPY apps/web ./apps/web
 RUN corepack enable pnpm \
   && pnpm install --frozen-lockfile --filter web...
+
+# 前端运行时 API 地址在构建期注入（客户端代码会被内联），线上部署必须传 NEXT_PUBLIC_API_BASE
+ARG NEXT_PUBLIC_API_BASE=http://localhost:3001/api
+ENV NEXT_PUBLIC_API_BASE=$NEXT_PUBLIC_API_BASE
+
 RUN pnpm --filter web build
 
 FROM node:20-slim AS runner

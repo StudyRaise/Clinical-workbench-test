@@ -1,0 +1,210 @@
+# ============================================================
+# 临床 AI 工作台 - 线上全量部署编排
+#
+# 一键部署（等价于 start.sh prod）：
+#   docker compose -f infra/compose/compose.prod.yml up -d --build
+#
+# 包含：基础设施（MySQL/Redis/etcd/MinIO/Milvus）+ 应用（inference/api/web/celery-worker）
+# 所有敏感值从仓库根目录 .env 读取；应用间通过服务名互访（不受 .env 中 localhost 影响）。
+# ============================================================
+# 注意：线上部署的 depends_on condition 依赖 Compose v2（docker compose），docker-compose v1 无法解析
+# 此处用 3.8 保持版本兼容提示
+version: '3.8'
+
+x-inference-env: &inference-env
+  DB_HOST: mysql
+  DB_PORT: 3306
+  DB_USER: ${DB_USER:-root}
+  DB_PASSWORD: ${DB_PASSWORD}
+  DB_NAME: ${DB_NAME:-clinical_workbench}
+  MILVUS_HOST: milvus
+  MILVUS_PORT: 19530
+  MINIO_ENDPOINT: minio:9000
+  MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
+  MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin}
+  REDIS_URL: redis://redis:6379/0
+  LLM_PROVIDER: ${LLM_PROVIDER:-sensenova}
+  SENSENOVA_API_KEY: ${SENSENOVA_API_KEY:-}
+  SENSENOVA_BASE_URL: ${SENSENOVA_BASE_URL:-https://token.sensenova.cn/v1}
+  SENSENOVA_MODEL: ${SENSENOVA_MODEL:-glm-5.2}
+  QWEN_API_KEY: ${QWEN_API_KEY:-}
+  DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+  LLM_API_KEY: ${LLM_API_KEY:-}
+  LLM_BASE_URL: ${LLM_BASE_URL:-}
+  LLM_MODEL: ${LLM_MODEL:-}
+  EMBEDDING_API_KEY: ${EMBEDDING_API_KEY:-}
+  EMBEDDING_MODEL: ${EMBEDDING_MODEL:-text-embedding-v2}
+  EMBEDDING_DIM: ${EMBEDDING_DIM:-1024}
+  # SenseCore 知识库 RAG（chat-release）
+  SENSECORE_RAG_URL: ${SENSECORE_RAG_URL:-https://rag.cn-sh-01.sensecoreapi.cn/studio/rag/chat/v1/release:chat}
+  SENSECORE_RELEASE_KEY: ${SENSECORE_RELEASE_KEY:-}
+  SENSECORE_ACCESS_KEY: ${SENSECORE_ACCESS_KEY:-}
+  SENSECORE_SECRET_KEY: ${SENSECORE_SECRET_KEY:-}
+  SENSECORE_BEARER_TOKEN: ${SENSECORE_BEARER_TOKEN:-}
+
+services:
+  # ---------------- 基础设施 ----------------
+  mysql:
+    image: mysql:8.0
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      MYSQL_DATABASE: ${DB_NAME:-clinical_workbench}
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ['CMD', 'mysqladmin', 'ping', '-h', '127.0.0.1', '-p${DB_PASSWORD}']
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 30s
+
+  redis:
+    image: redis:7
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  etcd:
+    image: quay.io/coreos/etcd:v3.5.5
+    restart: unless-stopped
+    environment:
+      - ETCD_AUTO_COMPACTION_MODE=revision
+      - ETCD_AUTO_COMPACTION_RETENTION=1000
+      - ETCD_QUOTA_BACKEND_BYTES=4294967296
+      - ETCD_SNAPSHOT_COUNT=50000
+    command: etcd -advertise-client-urls=http://127.0.0.1:2379 -listen-client-urls http://0.0.0.0:2379 --data-dir /etcd
+    volumes:
+      - etcd-data:/etcd
+    healthcheck:
+      test: ['CMD', 'etcdctl', 'endpoint', 'health']
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  minio:
+    image: minio/minio:RELEASE.2024-01-11T07-46-16Z
+    restart: unless-stopped
+    command: server /data --console-address ':9001'
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-minioadmin}
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  milvus:
+    image: milvusdb/milvus:v2.4.0
+    restart: unless-stopped
+    command: ['milvus', 'run', 'standalone']
+    security_opt:
+      - seccomp:unconfined
+    environment:
+      ETCD_ENDPOINTS: etcd:2379
+      MINIO_ADDRESS: minio:9000
+      MINIO_ACCESS_KEYID: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_SECRETACCESSKEY: ${MINIO_SECRET_KEY:-minioadmin}
+      COMMON_STORAGETYPE: minio
+    volumes:
+      - milvus-data:/var/lib/milvus
+    depends_on:
+      etcd:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD-SHELL', 'curl -sf http://localhost:9091/healthz || exit 1']
+      interval: 15s
+      timeout: 10s
+      retries: 20
+      start_period: 60s
+
+  # ---------------- 应用服务 ----------------
+  inference:
+    image: clinical-workbench/inference:cpu
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.inference.cpu
+    restart: unless-stopped
+    environment:
+      <<: *inference-env
+    expose:
+      - '8001'
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      milvus:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD-SHELL', 'python -c "import urllib.request;urllib.request.urlopen(\"http://127.0.0.1:8001/health\")" || exit 1']
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+
+  celery-worker:
+    image: clinical-workbench/inference:cpu  # 复用 inference 已构建镜像
+    restart: unless-stopped
+    command: ['celery', '-A', 'app.tasks.celery_app.celery_app', 'worker', '--loglevel=info', '-P', 'solo']
+    environment:
+      <<: *inference-env
+    depends_on:
+      - redis
+      - mysql
+
+  api:
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.api
+    restart: unless-stopped
+    environment:
+      PORT: 3001
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USER: ${DB_USER:-root}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME:-clinical_workbench}
+      INFERENCE_URL: http://inference:8001
+      JWT_SECRET: ${JWT_SECRET}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
+      FIELD_ENCRYPTION_KEY: ${FIELD_ENCRYPTION_KEY}
+      AUDIT_RETENTION_YEARS: ${AUDIT_RETENTION_YEARS:-6}
+    ports:
+      - '3001:3001'
+    depends_on:
+      mysql:
+        condition: service_healthy
+      inference:
+        condition: service_healthy
+
+  web:
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.web
+      args:
+        NEXT_PUBLIC_API_BASE: ${NEXT_PUBLIC_API_BASE:-http://localhost:3001/api}
+    restart: unless-stopped
+    environment:
+      NEXT_PUBLIC_API_BASE: ${NEXT_PUBLIC_API_BASE:-http://localhost:3001/api}
+    ports:
+      - '3000:3000'
+    depends_on:
+      - api
+
+volumes:
+  mysql-data:
+  milvus-data:
+  etcd-data:
+  minio-data:

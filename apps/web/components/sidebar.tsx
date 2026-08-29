@@ -9,6 +9,7 @@ import {
   Database,
   Library,
   Users,
+  ScrollText,
   Activity,
   type LucideIcon
 } from 'lucide-react';
@@ -28,7 +29,8 @@ const navItems: NavItem[] = [
   { title: '出院随访总结', href: '/discharge', icon: FileText },
   { title: '科研数据清洗', href: '/research', icon: Database },
   { title: '知识库管理', href: '/knowledge', icon: Library },
-  { title: '用户管理', href: '/users', icon: Users }
+  { title: '用户管理', href: '/users', icon: Users },
+  { title: '审计日志', href: '/audit-logs', icon: ScrollText }
 ];
 
 export function Sidebar() {
