@@ -52,13 +52,17 @@ export function isAuthenticated(): boolean {
 
 async function request<T>(
   path: string,
-  options: { method?: string; body?: unknown; formData?: FormData } = {}
+  options: { method?: string; body?: unknown; formData?: FormData; bustCache?: boolean } = {}
 ): Promise<T> {
-  const { method = 'GET', body, formData } = options;
+  const { method = 'GET', body, formData, bustCache } = options;
   const headers: Record<string, string> = {};
   const token = getToken();
   if (token) {
     headers.Authorization = `Bearer ${token}`;
+  }
+  // 手动刷新时绕过 BFF 短 TTL 缓存，强制实时拉取
+  if (bustCache) {
+    headers['x-cache-bust'] = '1';
   }
 
   let payload: BodyInit | undefined;
@@ -365,8 +369,8 @@ export interface KnowledgeDatasetActionResult {
   reason: string;
 }
 
-export async function fetchKnowledgeDatasets(): Promise<KnowledgeDatasetListResult> {
-  return request<KnowledgeDatasetListResult>('/knowledge/datasets');
+export async function fetchKnowledgeDatasets(bustCache = false): Promise<KnowledgeDatasetListResult> {
+  return request<KnowledgeDatasetListResult>('/knowledge/datasets', { bustCache });
 }
 
 export async function createKnowledgeDataset(

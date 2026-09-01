@@ -56,7 +56,12 @@ if errorlevel 1 (
 
 REM ---------- 5. start docker infra ----------
 echo [..] Starting Docker infra (mysql/redis/etcd/minio/milvus/mailhog)...
-%DC% --env-file "%CD%\.env" -f infra\compose\compose.dev.yml up -d
+REM docker compose v2 supports --env-file; docker-compose v1 reads .env from the working dir
+if "%DC%"=="docker compose" (
+  %DC% --env-file "%CD%\.env" -f infra\compose\compose.dev.yml up -d
+) else (
+  %DC% -f infra\compose\compose.dev.yml up -d
+)
 if errorlevel 1 (
   echo [ERR] Docker infra failed to start. See log above.
   pause

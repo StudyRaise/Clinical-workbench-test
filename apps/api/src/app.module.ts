@@ -14,6 +14,7 @@ import { KnowledgeModule } from './knowledge/knowledge.module';
 import { BusinessModule } from './business/business.module';
 import { InferenceModule } from './inference/inference.module';
 import { TenancyModule } from './tenancy/tenancy.module';
+import { CacheModule } from './cache/cache.module';
 
 @Module({
   imports: [
@@ -32,7 +33,8 @@ import { TenancyModule } from './tenancy/tenancy.module';
     KnowledgeModule,
     BusinessModule,
     TenancyModule,
-    InferenceModule
+    InferenceModule,
+    CacheModule
   ],
   controllers: [AppController],
   providers: [

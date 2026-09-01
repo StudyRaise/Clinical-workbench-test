@@ -91,11 +91,11 @@ export default function KnowledgePage() {
     if (el) el.scrollTop = el.scrollHeight;
   }, [chatMessages]);
 
-  const loadDatasets = useCallback(async () => {
+  const loadDatasets = useCallback(async (bustCache = false) => {
     setDatasetsLoading(true);
     setDatasetsError('');
     try {
-      const res = await fetchKnowledgeDatasets();
+      const res = await fetchKnowledgeDatasets(bustCache);
       setDatasets(res.datasets ?? []);
       setTargetDatasetId((prev) =>
         prev && (res.datasets ?? []).some((d) => d.dataset_id === prev)
@@ -409,7 +409,7 @@ export default function KnowledgePage() {
               {creating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
               创建
             </Button>
-            <Button variant="outline" size="icon" onClick={loadDatasets} disabled={datasetsLoading} title="刷新">
+            <Button variant="outline" size="icon" onClick={() => void loadDatasets(true)} disabled={datasetsLoading} title="刷新">
               <RefreshCw className={cn('h-4 w-4', datasetsLoading && 'animate-spin')} />
             </Button>
           </div>

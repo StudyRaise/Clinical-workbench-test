@@ -61,7 +61,12 @@ class SenseCoreRagClient:
 
     def _get_client(self) -> httpx.AsyncClient:
         if self._client is None:
-            self._client = httpx.AsyncClient(timeout=httpx.Timeout(60.0, read=120.0))
+            # 超时兜底：外网慢调用不得无限拖住首屏。
+            # 连接 10s、读 15s 即判超时，由路由层降级分支返回，避免页面长时间转圈。
+            self._client = httpx.AsyncClient(
+                timeout=httpx.Timeout(10.0, read=15.0),
+                limits=httpx.Limits(max_connections=50, max_keepalive_connections=20),
+            )
         return self._client
 
     # ---------- 鉴权 ----------

@@ -1,10 +1,14 @@
 # Node
 node_modules
 .pnpm-store
+.pnpm-tmp
 .next
 out
 build
 dist
+
+# Turbo ç¼“å­˜
+.turbo
 
 # Expo
 .expo
@@ -43,7 +47,7 @@ __pycache__
 # Prisma
 packages/db/prisma/migrations
 
-# TS ±àÒë²úÎï
+# TS ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 packages/*/src/**/*.js
 packages/*/src/**/*.js.map
 packages/*/src/**/*.d.ts
